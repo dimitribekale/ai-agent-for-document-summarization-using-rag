@@ -66,7 +66,7 @@ class HybridRetriever:
             fused_scores,
             rerank_top_n,
         )
-        #logger.info(f"Hybrid retrieval complete. Max score: {np.max(final_scores):.3f}")
+        logger.info(f"Hybrid retrieval complete. Max score: {np.max(final_scores):.3f}")
         return HybridScores(
             bm25_scores=bm25_scores,
             semantic_scores=semantic_scores,
@@ -86,12 +86,12 @@ class HybridRetriever:
         
     def _compute_bm25_scores(self, query: str, chunks: List[str]) -> np.ndarray:
         scores = self.bm25_scorer.score(query, chunks)
-        #logger.debug(f"BM25 scores - min: {np.min(scores):.3f}, max: {np.max(scores):.3f}")
+        logger.debug(f"BM25 scores - min: {np.min(scores):.3f}, max: {np.max(scores):.3f}")
         return scores
     
     def _compute_semantic_scores(self, query: str, embeddings: np.ndarray) -> np.ndarray:
         scores = self.semantic_searcher.score(query, embeddings)
-        #logger.debug(f"Semantic scores - min: {np.min(scores):.3f}, max: {np.max(scores):.3f}")
+        logger.debug(f"Semantic scores - min: {np.min(scores):.3f}, max: {np.max(scores):.3f}")
         return scores
     
     def _fuse_scores(self,
@@ -106,7 +106,7 @@ class HybridRetriever:
             bm25_weight,
             semantic_weight
         )
-        #logger.debug(f"Fused scores - min: {fused.min():.3f}, max: {fused.max():.3f}")
+        logger.debug(f"Fused scores - min: {fused.min():.3f}, max: {fused.max():.3f}")
         return fused
     
     def _rerank_top_candidates(self,

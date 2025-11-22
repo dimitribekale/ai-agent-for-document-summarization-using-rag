@@ -1,6 +1,7 @@
 """
 Retrieval pipeline.
 """
+import numpy as np
 from typing import List, Optional
 from src.agent.tools.base import Tool
 from src.agent.tools.retriever.base import (
@@ -28,6 +29,9 @@ class Retriever(Tool):
         self.diversity_penalty = diversity_penalty or DiversityPenalty()
         logger.info("Retriever initialized")
     
+    def name(self) -> str:
+        return "Retriever"
+
     def execute(self, input_data: RetrieverInput) -> RetrieverOutput:
         """
         Retriver pipeline: relevance -> diversity -> results.
@@ -39,7 +43,7 @@ class Retriever(Tool):
             logger.info(f"Retrieving for query: '{input_data.query}'")
             embeddings_array = np.array(input_data.embeddings)
             hybrid_scores = self.hybrid_retrieval.retrieve(
-                query=input_data,
+                query=input_data.query,
                 chunks=input_data.chunks,
                 embeddings=embeddings_array,
                 bm25_weight=input_data.bm25_weight,
@@ -53,14 +57,17 @@ class Retriever(Tool):
             )
             results = self._build_results(
                 indices=diverse_indices,
-                Chunks=input_data.chunks,
-                scores=hybrid_scores
+                chunks=input_data.chunks,
+                hybrid_scores=hybrid_scores
             )
             logger.info(f"Retrieved {len(results)} diverse results.")
             return RetrieverOutput(
                 results=results,
-                query=input_data.query,
-                total_chunks=len(input_data.chunks)
+                results_count=len(results),
+                query_expanded=False,
+                expanded_query_terms=[],
+                reranking_applied=True,
+                processing_stages={}
             )
         
         except Exception as e:
@@ -83,24 +90,32 @@ class Retriever(Tool):
     def _build_results(self,
                        indices: List[int],
                        chunks: List[str],
-                       hybrid_scores: HybridScores, ) -> List[RetrieverResult]:
-        
-        """Build the RetrieverResult object."""
-
+                       hybrid_scores: HybridScores ) -> List[RetrieverResult]:
+        """Build RetrieverResult objects"""
         results = []
         for rank, idx in enumerate(indices):
+          # Create metadata (simple version from base.py)
             metadata = ChunkMetadata(
+                chunk_index=idx,
+                source_position="middle",
+                chunk_length=len(chunks[idx]),
+                is_header=False
+            )
+            # Create result with ALL fields from base.py
+            result = RetrieverResult(
+                chunk=chunks[idx],
                 chunk_index=idx,
                 bm25_score=float(hybrid_scores.bm25_scores[idx]),
                 semantic_score=float(hybrid_scores.semantic_scores[idx]),
-                final_score=float(hybrid_scores.final_scores[idx])
-            )
-            result = RetrieverResult(
-                chunks=chunks[idx],
-                score=float(hybrid_scores.final_scores[idx]),
-                rank=rank + 1,
+                bm25_rank=rank + 1,
+                semantic_rank=rank + 1,
+                rrf_score=float(hybrid_scores.fused_scores[idx]),
+                rerank_score=float(hybrid_scores.final_scores[idx]),
+                final_score=float(hybrid_scores.final_scores[idx]),
+                diversity_penality=0.0,  # Note: typo in base.py!
                 metadata=metadata
             )
             results.append(result)
+
         logger.debug(f"Built {len(results)} result objects")
         return results

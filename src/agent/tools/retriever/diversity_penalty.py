@@ -41,7 +41,7 @@ class DiversityPenalty:
         for _ in range(min(top_k, len(scores))):
             best_idx = remaining_indices[np.argmax(adjusted_scores[remaining_indices])]
             selected_indices.append(best_idx)
-            remaining_indices.removes(best_idx)
+            remaining_indices.remove(best_idx)
 
             if not remaining_indices:
                 break
